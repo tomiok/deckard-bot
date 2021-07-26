@@ -64,22 +64,26 @@ var (
 	movieLen = len(movieCMD)
 )
 
-func getTitleInput(input string) (string, error) {
+type seed struct {
+	cmd string
+}
+
+func getTitleInput(input string) (*seed, error) {
 	if input == "" || len(input) <= movieLen {
-		return "", errors.New("input is empty")
+		return nil, errors.New("input is empty")
 	}
 
 	cmd := strings.Split(input, " ")
 
 	if len(cmd) <= 1 {
-		return "", errors.New("please type the command correctly")
+		return nil, errors.New("please type the command correctly")
 	}
 
 	switch cmd[0] {
 	case movieCMD:
-		return cmd[1], nil
+		return &seed{cmd: movie}, nil
 	default:
-		return "", errors.New("unknown error")
+		return nil, errors.New("unknown error")
 	}
 }
 
