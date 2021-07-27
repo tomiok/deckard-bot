@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -33,7 +34,7 @@ type Chat struct {
 }
 
 // HandleTelegramWebHook sends a message back to the chat with a punchline starting by the message provided by the user.
-func HandleTelegramWebHook(w http.ResponseWriter, r *http.Request) {
+func HandleTelegramWebHook(_ http.ResponseWriter, r *http.Request) {
 
 	// Parse incoming request
 	var update, err = parseTelegramRequest(r)
@@ -42,16 +43,30 @@ func HandleTelegramWebHook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	title, err := getTitleInput(update.Message.Text)
+	seed, err := getTitleInput(update.Message.Text)
+
+	if err != nil {
+		log.Printf("errors getting command, %s", err.Error())
+		return
+	}
+
+	res := fetchMovieInfo(seed.cmd)
 
 	// Send the punchline back to Telegram
-	var telegramResponseBody, errTelegram = sendTextToTelegramChat(update.Message.Chat.Id, title)
+	var telegramResponseBody, errTelegram = sendTextToTelegramChat(update.Message.Chat.Id, res)
 	if errTelegram != nil {
 		log.Printf("got error %s from telegram, response body is %s", errTelegram.Error(), telegramResponseBody)
 		return
 	}
 
-	log.Printf("response %s successfully distributed to chat id %d", title, update.Message.Chat.Id)
+	log.Printf("response %s successfully distributed to chat id %d", res, update.Message.Chat.Id)
+}
+
+func fetchMovieInfo(seed string) string {
+	moviesUrl:= fmt.Sprintf("https://movies-lib-stg.herokuapp.com/query?s=%s", seed)
+	http.Get(moviesUrl)
+
+	return ""
 }
 
 const (
