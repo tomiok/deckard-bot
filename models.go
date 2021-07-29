@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -50,7 +51,12 @@ func HandleTelegramWebHook(_ http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	res := fetchMovieInfo(seed.cmd)
+	res, err := fetchMovieInfo(seed.cmd)
+
+	if err != nil {
+		log.Printf("errors getting movies, %s", err.Error())
+		return
+	}
 
 	// Send the punchline back to Telegram
 	var telegramResponseBody, errTelegram = sendTextToTelegramChat(update.Message.Chat.Id, res)
@@ -62,11 +68,28 @@ func HandleTelegramWebHook(_ http.ResponseWriter, r *http.Request) {
 	log.Printf("response %s successfully distributed to chat id %d", res, update.Message.Chat.Id)
 }
 
-func fetchMovieInfo(seed string) string {
-	moviesUrl:= fmt.Sprintf("https://movies-lib-stg.herokuapp.com/query?s=%s", seed)
-	http.Get(moviesUrl)
+func fetchMovieInfo(seed string) ([]MoviesResponse, error) {
+	moviesUrl := fmt.Sprintf("https://movies-lib-stg.herokuapp.com/query?s=%s", seed)
+	res, err := http.Get(moviesUrl)
 
-	return ""
+	if err != nil {
+		return nil, err
+	}
+
+	body := res.Body
+	defer body.Close()
+
+	var movies []MoviesResponse
+	buf := new(bytes.Buffer)
+	_, _ = buf.ReadFrom(body)
+
+	err = json.Unmarshal(buf.Bytes(), &movies)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return movies, nil
 }
 
 const (
@@ -112,9 +135,16 @@ func parseTelegramRequest(r *http.Request) (*Update, error) {
 }
 
 // sendTextToTelegramChat sends a text message to the Telegram chat identified by its chat Id
-func sendTextToTelegramChat(chatId int, text string) (string, error) {
+func sendTextToTelegramChat(chatId int, movies []MoviesResponse) (string, error) {
+	log.Printf("Sending message to chat_id: %d", chatId)
 
-	log.Printf("Sending %s to chat_id: %d", text, chatId)
+	if len(movies) == 0 {
+		log.Print("no movies founded")
+		return "", nil
+	}
+
+	text := movies[0].Title
+
 	response, err := http.PostForm(
 		telegramApi,
 		url.Values{
@@ -137,4 +167,11 @@ func sendTextToTelegramChat(chatId int, text string) (string, error) {
 	log.Printf("Body of Telegram Response: %s", bodyString)
 
 	return bodyString, nil
+}
+
+type MoviesResponse struct {
+	Title  string `json:"title"`
+	Year   string `json:"year"`
+	ImdbID string `json:"imdbID"`
+	Poster string `json:"poster"`
 }
