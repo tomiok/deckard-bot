@@ -1,12 +1,14 @@
 package main
 
 import (
-	"fmt"
+	"errors"
 	"log"
 	"testing"
 )
 
-const blade = "blade"
+const (
+	blade = "blade"
+)
 
 func Test_fetchMovies(t *testing.T) {
 	res, err := fetchMovieInfo(blade)
@@ -22,12 +24,61 @@ func Test_fetchMovies(t *testing.T) {
 }
 
 func Test_getInput(t *testing.T) {
-	res, err := getTitleInput("/movie blade")
+	res, err := getInput(movieCMD + " " + blade)
 
 	if err != nil {
-		t.Error()
+		t.Fatal(err.Error())
 	}
 
-	fmt.Println(res.cmd)
-	fmt.Println(res.title)
+	if movie != res.cmd {
+		t.Fatal("command should be movie")
+	}
+
+	if res.title != blade {
+		t.Fatal("title should be " + blade)
+	}
+}
+
+func Test_getInputWithSpaces(t *testing.T) {
+	movieTitle := "tron legacy"
+	res, err := getInput(movieCMD + " " + movieTitle)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	if movie != res.cmd {
+		t.Fatal("command should be movie")
+	}
+
+	if res.title != movieTitle {
+		t.Fatal("title should be " + movieTitle)
+	}
+}
+
+func Test_inputStartCMD(t *testing.T) {
+	res, err := getInput(startCMD)
+
+	if err != nil {
+		t.Fatal("err should be nil")
+	}
+
+	if res.cmd != start {
+		t.Fatal("cmd should be start")
+	}
+
+	if res.title != "" {
+		t.Fatal("title should be empty")
+	}
+}
+
+func Test_errInput(t *testing.T) {
+	_, err := getInput("start")
+
+	if err == nil {
+		t.Fatal("input is wrong, should return an error")
+	}
+
+	if !errors.Is(err, errWrongCMD) {
+		t.Fatal("wrong error type")
+	}
 }

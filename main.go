@@ -14,9 +14,29 @@ import (
 	"strings"
 )
 
-const telegramApiBaseUrl string = "https://api.telegram.org/bot"
-const telegramApiSendMessage string = "/sendMessage"
-const telegramTokenEnv string = "TELEGRAM_BOT_TOKEN"
+const (
+	slash    = "/"
+	movie    = "movies"
+	start    = "start"
+	movieCMD = slash + movie
+	startCMD = slash + start
+
+	telegramApiBaseUrl     string = "https://api.telegram.org/bot"
+	telegramApiSendMessage string = "/sendMessage"
+	telegramTokenEnv       string = "TELEGRAM_BOT_TOKEN"
+)
+
+var (
+	movieLen = len(movieCMD)
+	startLen = len(startCMD)
+
+	errWrongCMD = errors.New("type /start to get help")
+)
+
+type seed struct {
+	cmd   string
+	title string
+}
 
 type Update struct {
 	UpdateId int     `json:"update_id"`
@@ -42,7 +62,7 @@ func HandleTelegramWebHook(_ http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	seed, err := getTitleInput(update.Message.Text)
+	seed, err := getInput(update.Message.Text)
 
 	if err != nil {
 		log.Printf("errors getting command, %s", err.Error())
@@ -90,35 +110,30 @@ func fetchMovieInfo(seed string) ([]MoviesResponse, error) {
 	return movies, nil
 }
 
-const (
-	slash    = "/"
-	movie    = "movie"
-	movieCMD = slash + movie
-)
-
-var (
-	movieLen = len(movieCMD)
-)
-
-type seed struct {
-	cmd   string
-	title string
-}
-
-func getTitleInput(input string) (*seed, error) {
-	if input == "" || len(input) <= movieLen {
+func getInput(input string) (*seed, error) {
+	if input == "" {
 		return nil, errors.New("input is empty")
 	}
 
-	cmd := strings.Split(input, " ")
-
-	if len(cmd) <= 1 {
-		return nil, errors.New("please type the command correctly")
+	if strings.Index(input, slash) != 0 {
+		return nil, errWrongCMD
 	}
 
-	switch cmd[0] {
+	if strings.Trim(input, " ") == startCMD {
+		return &seed{cmd: start}, nil
+	}
+
+	words := strings.Fields(input)
+
+	if len(words) <= 1 {
+		return nil, errors.New("please type the command correctly")
+	}
+	cmd := words[0]
+	movieTitle := strings.Join(words[1:], " ")
+
+	switch cmd {
 	case movieCMD:
-		return &seed{cmd: movie, title: cmd[1]}, nil
+		return &seed{cmd: movie, title: movieTitle}, nil
 	default:
 		return nil, errors.New("unknown error")
 	}
