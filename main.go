@@ -18,8 +18,6 @@ const telegramApiBaseUrl string = "https://api.telegram.org/bot"
 const telegramApiSendMessage string = "/sendMessage"
 const telegramTokenEnv string = "TELEGRAM_BOT_TOKEN"
 
-var telegramApi = telegramApiBaseUrl + os.Getenv(telegramTokenEnv) + telegramApiSendMessage
-
 type Update struct {
 	UpdateId int     `json:"update_id"`
 	Message  Message `json:"message"`
@@ -51,7 +49,7 @@ func HandleTelegramWebHook(_ http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	res, err := fetchMovieInfo(seed.cmd)
+	res, err := fetchMovieInfo(seed.title)
 
 	if err != nil {
 		log.Printf("errors getting movies, %s", err.Error())
@@ -103,7 +101,8 @@ var (
 )
 
 type seed struct {
-	cmd string
+	cmd   string
+	title string
 }
 
 func getTitleInput(input string) (*seed, error) {
@@ -119,7 +118,7 @@ func getTitleInput(input string) (*seed, error) {
 
 	switch cmd[0] {
 	case movieCMD:
-		return &seed{cmd: movie}, nil
+		return &seed{cmd: movie, title: cmd[1]}, nil
 	default:
 		return nil, errors.New("unknown error")
 	}
@@ -145,12 +144,16 @@ func sendTextToTelegramChat(chatId int, movies []MoviesResponse) (string, error)
 
 	text := movies[0].Title
 
+	var telegramApi = telegramApiBaseUrl + os.Getenv(telegramTokenEnv) + telegramApiSendMessage
+	log.Printf("api: %s", telegramApi)
 	response, err := http.PostForm(
 		telegramApi,
 		url.Values{
 			"chat_id": {strconv.Itoa(chatId)},
 			"text":    {text},
 		})
+
+	log.Printf("chat id %d", chatId)
 
 	if err != nil {
 		log.Printf("error when posting text to the chat: %s", err.Error())
