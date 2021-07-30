@@ -27,10 +27,9 @@ const (
 )
 
 var (
-	movieLen = len(movieCMD)
-	startLen = len(startCMD)
-
 	errWrongCMD = errors.New("type /start to get help")
+	errTypoCMD  = errors.New("please type the command correctly or use /start")
+	errUnknown  = errors.New("unknown error")
 )
 
 type seed struct {
@@ -54,7 +53,6 @@ type Chat struct {
 
 // HandleTelegramWebHook sends a message back to the chat with a punchline starting by the message provided by the user.
 func HandleTelegramWebHook(_ http.ResponseWriter, r *http.Request) {
-
 	// Parse incoming request
 	var update, err = parseTelegramRequest(r)
 	if err != nil {
@@ -62,7 +60,7 @@ func HandleTelegramWebHook(_ http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	seed, err := getInput(update.Message.Text)
+	seed, err := sanitizeInput(update.Message.Text)
 
 	if err != nil {
 		log.Printf("errors getting command, %s", err.Error())
@@ -76,7 +74,7 @@ func HandleTelegramWebHook(_ http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Send the punchline back to Telegram
+	// Send the response back to Telegram
 	var telegramResponseBody, errTelegram = sendTextToTelegramChat(update.Message.Chat.Id, res)
 	if errTelegram != nil {
 		log.Printf("got error %s from telegram, response body is %s", errTelegram.Error(), telegramResponseBody)
@@ -110,7 +108,7 @@ func fetchMovieInfo(seed string) ([]MoviesResponse, error) {
 	return movies, nil
 }
 
-func getInput(input string) (*seed, error) {
+func sanitizeInput(input string) (*seed, error) {
 	if input == "" {
 		return nil, errors.New("input is empty")
 	}
@@ -126,7 +124,7 @@ func getInput(input string) (*seed, error) {
 	words := strings.Fields(input)
 
 	if len(words) <= 1 {
-		return nil, errors.New("please type the command correctly")
+		return nil, errTypoCMD
 	}
 	cmd := words[0]
 	movieTitle := strings.Join(words[1:], " ")
@@ -135,7 +133,7 @@ func getInput(input string) (*seed, error) {
 	case movieCMD:
 		return &seed{cmd: movie, title: movieTitle}, nil
 	default:
-		return nil, errors.New("unknown error")
+		return nil, errUnknown
 	}
 }
 
@@ -152,39 +150,44 @@ func parseTelegramRequest(r *http.Request) (*Update, error) {
 func sendTextToTelegramChat(chatId int, movies []MoviesResponse) (string, error) {
 	log.Printf("Sending message to chat_id: %d", chatId)
 
+	text := movies[0].Title
+	var telegramApi = telegramApiBaseUrl + os.Getenv(telegramTokenEnv) + telegramApiSendMessage
+
 	if len(movies) == 0 {
-		log.Print("no movies founded")
-		return "", nil
+		_, err := sendMessage(chatId, telegramApi, text)
+		return "no movies found", err
 	}
 
-	text := movies[0].Title
-
-	var telegramApi = telegramApiBaseUrl + os.Getenv(telegramTokenEnv) + telegramApiSendMessage
-	log.Printf("api: %s", telegramApi)
-	response, err := http.PostForm(
-		telegramApi,
-		url.Values{
-			"chat_id": {strconv.Itoa(chatId)},
-			"text":    {text},
-		})
-
-	log.Printf("chat id %d", chatId)
+	response, err := sendMessage(chatId, telegramApi, text)
 
 	if err != nil {
 		log.Printf("error when posting text to the chat: %s", err.Error())
 		return "", err
 	}
-	defer response.Body.Close()
+	defer func() {
+		_ = response.Body.Close()
+	}()
 
-	var bodyBytes, errRead = ioutil.ReadAll(response.Body)
-	if errRead != nil {
-		log.Printf("error in parsing telegram answer %s", errRead.Error())
+	bodyBytes, err := ioutil.ReadAll(response.Body)
+
+	if err != nil {
+		log.Printf("error in parsing telegram answer %s", err.Error())
 		return "", err
 	}
+
 	bodyString := string(bodyBytes)
 	log.Printf("Body of Telegram Response: %s", bodyString)
 
 	return bodyString, nil
+}
+
+func sendMessage(chatID int, telegramApi, s string) (*http.Response, error) {
+	return http.PostForm(
+		telegramApi,
+		url.Values{
+			"chat_id": {strconv.Itoa(chatID)},
+			"text":    {s},
+		})
 }
 
 type MoviesResponse struct {

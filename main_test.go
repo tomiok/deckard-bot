@@ -24,7 +24,7 @@ func Test_fetchMovies(t *testing.T) {
 }
 
 func Test_getInput(t *testing.T) {
-	res, err := getInput(movieCMD + " " + blade)
+	res, err := sanitizeInput(movieCMD + " " + blade)
 
 	if err != nil {
 		t.Fatal(err.Error())
@@ -41,7 +41,7 @@ func Test_getInput(t *testing.T) {
 
 func Test_getInputWithSpaces(t *testing.T) {
 	movieTitle := "tron legacy"
-	res, err := getInput(movieCMD + " " + movieTitle)
+	res, err := sanitizeInput(movieCMD + " " + movieTitle)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
@@ -56,7 +56,7 @@ func Test_getInputWithSpaces(t *testing.T) {
 }
 
 func Test_inputStartCMD(t *testing.T) {
-	res, err := getInput(startCMD)
+	res, err := sanitizeInput(startCMD)
 
 	if err != nil {
 		t.Fatal("err should be nil")
@@ -72,7 +72,7 @@ func Test_inputStartCMD(t *testing.T) {
 }
 
 func Test_errInput(t *testing.T) {
-	_, err := getInput("start")
+	_, err := sanitizeInput("start")
 
 	if err == nil {
 		t.Fatal("input is wrong, should return an error")
