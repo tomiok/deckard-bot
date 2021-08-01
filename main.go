@@ -12,7 +12,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"testing"
 )
 
 const (
@@ -52,15 +51,25 @@ type Chat struct {
 	Id int `json:"id"`
 }
 
+type MovieResponse struct {
+	Title  string `json:"title"`
+	Year   string `json:"year"`
+	ImdbID string `json:"imdbID"`
+	Poster string `json:"poster"`
+}
+
 // HandleTelegramWebHook sends a message back to the chat with a punchline starting by the message provided by the user.
 func HandleTelegramWebHook(_ http.ResponseWriter, r *http.Request) {
-	// Parse incoming request
 	var update, err = parseTelegramRequest(r)
 	if err != nil {
 		log.Printf("error parsing update, %s", err.Error())
 		return
 	}
 
+	handleRequest(update)
+}
+
+func handleRequest(update *Update) {
 	seed, err := sanitizeInput(update.Message.Text)
 
 	if err != nil {
@@ -85,7 +94,7 @@ func HandleTelegramWebHook(_ http.ResponseWriter, r *http.Request) {
 	log.Printf("response %s successfully distributed to chat id %d", res, update.Message.Chat.Id)
 }
 
-func fetchMovieInfo(seed string) ([]MoviesResponse, error) {
+func fetchMovieInfo(seed string) ([]MovieResponse, error) {
 	moviesUrl := fmt.Sprintf("https://movies-lib-stg.herokuapp.com/query?s=%s", seed)
 	res, err := http.Get(moviesUrl)
 
@@ -94,9 +103,12 @@ func fetchMovieInfo(seed string) ([]MoviesResponse, error) {
 	}
 
 	body := res.Body
-	defer body.Close()
 
-	var movies []MoviesResponse
+	defer func() {
+		_ = body.Close()
+	}()
+
+	var movies []MovieResponse
 	buf := new(bytes.Buffer)
 	_, _ = buf.ReadFrom(body)
 
@@ -148,7 +160,7 @@ func parseTelegramRequest(r *http.Request) (*Update, error) {
 }
 
 // sendTextToTelegramChat sends a text message to the Telegram chat identified by its chat Id
-func sendTextToTelegramChat(chatId int, movies []MoviesResponse) (string, error) {
+func sendTextToTelegramChat(chatId int, movies []MovieResponse) (string, error) {
 	log.Printf("Sending message to chat_id: %d", chatId)
 
 	text := movies[0].Title
@@ -191,13 +203,17 @@ func sendMessage(chatID int, telegramApi, s string) (*http.Response, error) {
 		})
 }
 
-func writePrettyResponse(t *testing.T) {
+func displayMoviesRes(movies []MovieResponse) string {
+	var res = make([]string, len(movies))
 
+	for i, movie := range movies {
+		res[i] = formatMovieText(movie)
+	}
+
+	return strings.Join(res, "")
 }
 
-type MoviesResponse struct {
-	Title  string `json:"title"`
-	Year   string `json:"year"`
-	ImdbID string `json:"imdbID"`
-	Poster string `json:"poster"`
+func formatMovieText(m MovieResponse) string {
+	format := "Title: %s, Year: %s, imdbID: %s, Poster: %s\n"
+	return fmt.Sprintf(format, m.Title, m.Year, m.ImdbID, m.Poster)
 }

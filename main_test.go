@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"log"
+	"strings"
 	"testing"
 )
 
@@ -88,5 +89,43 @@ func Test_emptyInput(t *testing.T) {
 
 	if !errors.Is(err, errWrongCMD) {
 		t.Error("wrong error type")
+	}
+}
+
+func Test_nameDisplay(t *testing.T) {
+	movie := MovieResponse{
+		Title:  "Alien",
+		Year:   "1968",
+		ImdbID: "12345",
+		Poster: "https://alien.jpg",
+	}
+
+	s := formatMovieText(movie)
+	expected := "Title: Alien, Year: 1968, imdbID: 12345, Poster: https://alien.jpg\n"
+
+	if expected != s {
+		t.Error("wrong text")
+	}
+}
+
+func Test_displayMovies(t *testing.T) {
+	var movies = []MovieResponse{{
+		Title:  "Blade Runner",
+		Year:   "1984",
+		ImdbID: "12345",
+		Poster: "blade_runner.jpg",
+	},
+		{
+			Title:  "Blade",
+			Year:   "2011",
+			ImdbID: "456789",
+			Poster: "blade.jpg",
+		},
+	}
+
+	res := displayMoviesRes(movies)
+
+	if !strings.Contains(res, "12345") {
+		t.Error("imdbID is not present")
 	}
 }
