@@ -82,3 +82,11 @@ func Test_errInput(t *testing.T) {
 		t.Fatal("wrong error type")
 	}
 }
+
+func Test_emptyInput(t *testing.T) {
+	_, err := sanitizeInput("")
+
+	if !errors.Is(err, errWrongCMD) {
+		t.Error("wrong error type")
+	}
+}

@@ -12,6 +12,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"testing"
 )
 
 const (
@@ -110,7 +111,7 @@ func fetchMovieInfo(seed string) ([]MoviesResponse, error) {
 
 func sanitizeInput(input string) (*seed, error) {
 	if input == "" {
-		return nil, errors.New("input is empty")
+		return nil, errWrongCMD
 	}
 
 	if strings.Index(input, slash) != 0 {
@@ -188,6 +189,10 @@ func sendMessage(chatID int, telegramApi, s string) (*http.Response, error) {
 			"chat_id": {strconv.Itoa(chatID)},
 			"text":    {s},
 		})
+}
+
+func writePrettyResponse(t *testing.T) {
+
 }
 
 type MoviesResponse struct {
