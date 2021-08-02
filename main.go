@@ -77,24 +77,29 @@ func handleRequest(update *Update) {
 		return
 	}
 
-	res, err := fetchMovieInfo(seed.title)
+	movies, err := execCommand(seed.title)
 
 	if err != nil {
 		log.Printf("errors getting movies, %s", err.Error())
 		return
 	}
 
-	// Send the response back to Telegram
-	var telegramResponseBody, errTelegram = sendTextToTelegramChat(update.Message.Chat.Id, res)
-	if errTelegram != nil {
-		log.Printf("got error %s from telegram, response body is %s", errTelegram.Error(), telegramResponseBody)
+	if len(movies) == 0 {
+		_, _ = sendTextToTelegramChat(update.Message.Chat.Id, []MovieResponse{})
 		return
 	}
 
-	log.Printf("response %s successfully distributed to chat id %d", res, update.Message.Chat.Id)
+	// Send the response back to Telegram
+	telegramResponseBody, err := sendTextToTelegramChat(update.Message.Chat.Id, movies)
+	if err != nil {
+		log.Printf("got error %s from telegram, response body is %s", err.Error(), telegramResponseBody)
+		return
+	}
+
+	log.Printf("response %s successfully distributed to chat id %d", movies, update.Message.Chat.Id)
 }
 
-func fetchMovieInfo(seed string) ([]MovieResponse, error) {
+func execCommand(seed string) ([]MovieResponse, error) {
 	moviesUrl := fmt.Sprintf("https://movies-lib-stg.herokuapp.com/query?s=%s", seed)
 	res, err := http.Get(moviesUrl)
 
@@ -163,14 +168,13 @@ func parseTelegramRequest(r *http.Request) (*Update, error) {
 func sendTextToTelegramChat(chatId int, movies []MovieResponse) (string, error) {
 	log.Printf("Sending message to chat_id: %d", chatId)
 
-	text := movies[0].Title
 	var telegramApi = telegramApiBaseUrl + os.Getenv(telegramTokenEnv) + telegramApiSendMessage
 
 	if len(movies) == 0 {
-		_, err := sendMessage(chatId, telegramApi, text)
+		_, err := sendMessage(chatId, telegramApi, "no movies found")
 		return "no movies found", err
 	}
-
+	text := movies[0].Title
 	response, err := sendMessage(chatId, telegramApi, text)
 
 	if err != nil {

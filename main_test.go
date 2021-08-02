@@ -12,7 +12,7 @@ const (
 )
 
 func Test_fetchMovies(t *testing.T) {
-	res, err := fetchMovieInfo(blade)
+	res, err := execCommand(blade)
 
 	if err != nil {
 		log.Printf("%v", err.Error())
@@ -128,4 +128,16 @@ func Test_displayMovies(t *testing.T) {
 	if !strings.Contains(res, "12345") {
 		t.Error("imdbID is not present")
 	}
+}
+
+func Test_handleRequest_start(t *testing.T) {
+	u := &Update{
+		UpdateId: 1,
+		Message: Message{
+			Text: "/start",
+			Chat: Chat{Id: 1},
+		},
+	}
+
+	handleRequest(u)
 }
