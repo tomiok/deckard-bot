@@ -2,7 +2,6 @@ package main
 
 import (
 	"errors"
-	"log"
 	"strings"
 	"testing"
 )
@@ -12,15 +11,15 @@ const (
 )
 
 func Test_fetchMovies(t *testing.T) {
-	res, err := execCommand(blade)
+	res := prepareCommand(&seed{
+		cmd:   "movies",
+		title: "blade",
+	})
 
-	if err != nil {
-		log.Printf("%v", err.Error())
+	movies := res.fn()
+
+	if len(movies) < 100 {
 		t.Error()
-	}
-
-	if len(res) == 0 {
-		t.Error("cannot be empty for title " + blade)
 	}
 }
 
@@ -31,7 +30,7 @@ func Test_getInput(t *testing.T) {
 		t.Fatal(err.Error())
 	}
 
-	if movie != res.cmd {
+	if movies != res.cmd {
 		t.Fatal("command should be movie")
 	}
 
@@ -47,7 +46,7 @@ func Test_getInputWithSpaces(t *testing.T) {
 		t.Fatal(err.Error())
 	}
 
-	if movie != res.cmd {
+	if movies != res.cmd {
 		t.Fatal("command should be movie")
 	}
 
