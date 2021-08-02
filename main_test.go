@@ -10,15 +10,27 @@ const (
 	blade = "blade"
 )
 
-func Test_fetchMovies(t *testing.T) {
+func Test_prepareCommandMovies(t *testing.T) {
 	res := prepareCommand(&seed{
-		cmd:   "movies",
+		cmd:   movies,
 		title: "blade",
 	})
 
 	movies := res.fn()
 
 	if len(movies) < 100 {
+		t.Error()
+	}
+}
+
+func Test_prepareCommandStart(t *testing.T) {
+	res := prepareCommand(&seed{
+		cmd: start,
+	})
+
+	message := res.fn()
+
+	if message != "Hi, please search a movie with /movies command. Use like /movies blade runner and see what happen" {
 		t.Error()
 	}
 }
@@ -138,5 +150,8 @@ func Test_handleRequest_start(t *testing.T) {
 		},
 	}
 
-	handleRequest(u)
+	res := handleRequest(u)
+	if res != "response successfully distributed to chat id 1" {
+		t.Error()
+	}
 }

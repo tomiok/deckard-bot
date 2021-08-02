@@ -67,30 +67,27 @@ func HandleTelegramWebHook(_ http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	handleRequest(update)
+	log.Print(handleRequest(update))
 }
 
-func handleRequest(update *Update) {
+func handleRequest(update *Update) string {
 	seed, err := sanitizeInput(update.Message.Text)
 
 	if err != nil {
 		log.Printf("errors getting command, %s", err.Error())
-		_, _ = sendTextToTelegramChat(update.Message.Chat.Id, "command error. Please use /start to start chatting")
-		return
+		res, _ := sendTextToTelegramChat(update.Message.Chat.Id, "command error. Please use /start to start chatting")
+		return res
 	}
 
-	finalSeed := prepareCommand(seed)
-
-	response := finalSeed.fn()
+	response := prepareCommand(seed).fn()
 
 	// Send the response back to Telegram
 	telegramResponseBody, err := sendTextToTelegramChat(update.Message.Chat.Id, response)
 	if err != nil {
-		log.Printf("got error %s from telegram, response body is %s", err.Error(), telegramResponseBody)
-		return
+		return fmt.Sprintf("got error %s from telegram, response body is %s", err.Error(), telegramResponseBody)
 	}
 
-	log.Printf("response %s successfully distributed to chat id %d", movies, update.Message.Chat.Id)
+	return fmt.Sprintf("response successfully distributed to chat id %d", update.Message.Chat.Id)
 }
 
 func prepareCommand(seed *seed) *seed {
