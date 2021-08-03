@@ -98,11 +98,17 @@ func prepareCommand(seed *seed) *seed {
 		}
 	case movies:
 		seed.fn = func() string {
-			moviesUrl := fmt.Sprintf("https://movies-lib-stg.herokuapp.com/query?s=%s", seed.title)
-			res, err := http.Get(moviesUrl)
+			req, _ := http.NewRequest("GET", "https://movies-lib-stg.herokuapp.com/query", nil)
+
+			q := req.URL.Query()
+			q.Add("s", seed.title)
+			req.URL.RawQuery = q.Encode()
+
+			res, err := http.Get(req.URL.String())
 
 			if err != nil {
-				return ""
+				log.Printf("err %v", err.Error())
+				return "cannot bring the movie"
 			}
 
 			body := res.Body
@@ -118,7 +124,8 @@ func prepareCommand(seed *seed) *seed {
 			err = json.Unmarshal(buf.Bytes(), &movies)
 
 			if err != nil {
-				return ""
+				log.Printf("err %v", err.Error())
+				return "cannot parse the API response"
 			}
 			return displayMoviesRes(movies)
 		}

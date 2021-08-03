@@ -23,6 +23,19 @@ func Test_prepareCommandMovies(t *testing.T) {
 	}
 }
 
+func Test_prepareCommandMoviesLongTitle(t *testing.T) {
+	res := prepareCommand(&seed{
+		cmd:   movies,
+		title: "tron legacy",
+	})
+
+	movies := res.fn()
+
+	if len(movies) < 100 {
+		t.Error()
+	}
+}
+
 func Test_prepareCommandStart(t *testing.T) {
 	res := prepareCommand(&seed{
 		cmd: start,
