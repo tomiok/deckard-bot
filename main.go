@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
@@ -74,7 +73,6 @@ func handleRequest(update *Update) string {
 	seed, err := sanitizeInput(update.Message.Text)
 
 	if err != nil {
-		log.Printf("errors getting command, %s", err.Error())
 		res, _ := sendTextToTelegramChat(update.Message.Chat.Id, "command error. Please use /start to start chatting")
 		return res
 	}
@@ -82,9 +80,9 @@ func handleRequest(update *Update) string {
 	response := prepareCommand(seed).fn()
 
 	// Send the response back to Telegram
-	telegramResponseBody, err := sendTextToTelegramChat(update.Message.Chat.Id, response)
+	_, err = sendTextToTelegramChat(update.Message.Chat.Id, response)
 	if err != nil {
-		return fmt.Sprintf("got error %s from telegram, response body is %s", err.Error(), telegramResponseBody)
+		return fmt.Sprintf("got error %s from telegram", err.Error())
 	}
 
 	return fmt.Sprintf("response successfully distributed to chat id %d", update.Message.Chat.Id)
@@ -173,31 +171,20 @@ func parseTelegramRequest(r *http.Request) (*Update, error) {
 }
 
 // sendTextToTelegramChat sends a text message to the Telegram chat identified by its chat Id
-func sendTextToTelegramChat(chatId int, res string) (string, error) {
+func sendTextToTelegramChat(chatId int, res string) error {
 	log.Printf("Sending message to chat_id: %d", chatId)
 
 	var telegramApi = telegramApiBaseUrl + os.Getenv(telegramTokenEnv) + telegramApiSendMessage
 	response, err := sendMessage(chatId, telegramApi, res)
 
 	if err != nil {
-		log.Printf("error when posting text to the chat: %s", err.Error())
-		return "", err
+		return err
 	}
 	defer func() {
 		_ = response.Body.Close()
 	}()
 
-	bodyBytes, err := ioutil.ReadAll(response.Body)
-
-	if err != nil {
-		log.Printf("error in parsing telegram answer %s", err.Error())
-		return "", err
-	}
-
-	bodyString := string(bodyBytes)
-	log.Printf("Body of Telegram Response: %s", bodyString)
-
-	return bodyString, nil
+	return nil
 }
 
 func sendMessage(chatID int, telegramApi, s string) (*http.Response, error) {
