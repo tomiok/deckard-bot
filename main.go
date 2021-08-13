@@ -73,14 +73,18 @@ func handleRequest(update *Update) string {
 	seed, err := sanitizeInput(update.Message.Text)
 
 	if err != nil {
-		res, _ := sendTextToTelegramChat(update.Message.Chat.Id, "command error. Please use /start to start chatting")
-		return res
+		log.Printf("cannot sanitize input %s \n", err.Error())
+		err := sendTextToTelegramChat(update.Message.Chat.Id, "command error. Please use /start to start chatting")
+		if err != nil {
+			return fmt.Sprintf("got error %s from telegram. Not", err.Error())
+		}
+		return "message with error sent to the user"
 	}
 
 	response := prepareCommand(seed).fn()
 
 	// Send the response back to Telegram
-	_, err = sendTextToTelegramChat(update.Message.Chat.Id, response)
+	err = sendTextToTelegramChat(update.Message.Chat.Id, response)
 	if err != nil {
 		return fmt.Sprintf("got error %s from telegram", err.Error())
 	}
@@ -172,7 +176,7 @@ func parseTelegramRequest(r *http.Request) (*Update, error) {
 
 // sendTextToTelegramChat sends a text message to the Telegram chat identified by its chat Id
 func sendTextToTelegramChat(chatId int, res string) error {
-	log.Printf("Sending message to chat_id: %d", chatId)
+	log.Printf("sending message to chat_id: %d", chatId)
 
 	var telegramApi = telegramApiBaseUrl + os.Getenv(telegramTokenEnv) + telegramApiSendMessage
 	response, err := sendMessage(chatId, telegramApi, res)
